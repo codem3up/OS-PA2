@@ -201,6 +201,11 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if(should_preempt())
+  {
+    thread_yield();
+  }
+
   return tid;
 }
 
@@ -239,7 +244,9 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_sort, NULL);
   t->status = THREAD_READY;
+
   intr_set_level (old_level);
+
 
 }
 
@@ -348,7 +355,13 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  enum intr_level old_level = intr_disable();
   thread_current ()->priority = new_priority;
+  if(should_preempt()){
+    thread_yield();
+  }
+  intr_set_level(old_level);
+
 }
 
 /* Returns the current thread's priority. */
@@ -598,3 +611,17 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+//Looks at top of Ready List to Determine if it should preempt
+int should_preempt()
+{
+  if(!list_empty(&ready_list))
+  {
+    struct thread *top = list_entry(list_front(&ready_list), struct thread, elem);
+    if(thread_current()->priority < top->priority)
+    {
+      return 1;
+    }
+  }
+  return 0;
+}

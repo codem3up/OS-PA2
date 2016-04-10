@@ -191,6 +191,7 @@ activate_threads(struct thread *t, void *aux)
       if(t->sleep_time == 0)
       {
         thread_unblock(t);
+        intr_yield_on_return();
       }
     }
   }
