@@ -139,5 +139,6 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 bool priority_sort(const struct list_elem *a, const struct list_elem *b);
+int should_preempt(void);
 
 #endif /* threads/thread.h */
