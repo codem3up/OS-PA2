@@ -92,6 +92,8 @@ struct thread
     int64_t sleep_time;                      /* How long thread should sleep */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list donor_list;          /* list of threads that have donated prioriy */
+    int init_priority;                  /* original priority */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
