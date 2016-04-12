@@ -201,7 +201,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize priority donation */
   t->init_priority = priority;
-  list_init(t->donor_list);
+  list_init(&t->donor_list);
 
   /* Add to run queue. */
   thread_unblock (t);
