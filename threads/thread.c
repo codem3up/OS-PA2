@@ -201,7 +201,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize priority donation */
   t->init_priority = priority;
-  list_init(t->donor_list);
+  list_init(&t->donor_list);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -623,7 +623,7 @@ int should_preempt()
   if(!list_empty(&ready_list))
   {
     struct thread *top = list_entry(list_front(&ready_list), struct thread, elem);
-    if(thread_current()->priority < top->priority)
+    if(thread_get_priority() < top->priority)
     {
       return 1;
     }
