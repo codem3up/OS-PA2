@@ -1,4 +1,5 @@
 #include "threads/thread.h"
+//#include "threads/fixed_point.h"
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -49,6 +50,7 @@ struct kernel_thread_frame
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
+static long long total_ticks;   /* # of timer ticks used by system in total */
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -70,6 +72,8 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static struct list mlfq[PRI_MAX+1];
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -98,6 +102,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  initial_thread->nice = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -125,6 +130,7 @@ thread_tick (void)
   struct thread *t = thread_current ();
 
   /* Update statistics. */
+  total_ticks++;
   if (t == idle_thread)
     idle_ticks++;
 #ifdef USERPROG
@@ -134,9 +140,18 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  if (thread_mlfqs == 1 && total_ticks % 4 == 0){
+  	// update priority of all threads
+  }
+
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+}
+
+/* Run through all threads and update priority */
+void mlfqs_update_priority(void){
+
 }
 
 /* Prints thread statistics. */
@@ -200,9 +215,15 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   /* Initialize priority donation */
-  t->init_priority = priority;
-  list_init(&t->donor_list);
+  if (thread_mlfqs == 0){
+  	t->init_priority = priority;
+  	list_init(&t->donor_list);
+  }
 
+  /* Initialize mlfqs variables */
+  if (thread_mlfqs != 0){
+  	
+  }
   /* Add to run queue. */
   thread_unblock (t);
 

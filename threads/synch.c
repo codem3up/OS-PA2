@@ -203,10 +203,21 @@ lock_acquire (struct lock *lock)
 
   /* if lock.holder != null
  *  if lock.holder priority lower than current priority
- *
+ *  lock_holder->priority = thread_current()->priority;
+    donate_priority(lock->holder);
+  
  */
+
+  //enum intr_level old_level = intr_disable();
+  if (lock->holder != NULL){
+    struct thread *t = lock->holder;
+    
+    t->priority == thread_current()->priority;
+  }
+  //intr_set_level(old_level);
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
