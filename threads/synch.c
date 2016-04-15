@@ -201,12 +201,22 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  /* if lock.holder != null
- *  if lock.holder priority lower than current priority
- *
- */
+  /** when this section is un commented the lock holders priority changes properly
+   * but the other threads never run. when its commented out the other threads run
+   * the lock holders priority doesn't change. it's not crashing though either way, hurray.
+   * */
+//  enum intr_level old_level = intr_disable();
+//  struct thread *holder = lock->holder;
+//  struct thread *cur = thread_current();
+//  if (holder != NULL && holder->priority < cur->priority){
+//    lock->holder->priority = thread_current()->priority+1;
+//
+//  }
+//  intr_set_level(old_level);
+
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false

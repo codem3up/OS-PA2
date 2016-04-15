@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/fixed_point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -92,8 +93,12 @@ struct thread
     int64_t sleep_time;                      /* How long thread should sleep */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    /* project additions */
     struct list donor_list;          /* list of threads that have donated prioriy */
     int init_priority;                  /* original priority */
+    struct fixed_point recent_cpu;      /* measure of threads "recent" cpu use */
+    int nice;                           /* measure of how friendly thread is to other threads */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -134,6 +139,13 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+/* mlfqs additions */
+void update_mlfqs(int64_t ticks);
+void update_mlfqs_priority(void);
+void calc_recent_cpu(struct thread *t, void *aux);
+void calc_load_avg();
+
 
 int thread_get_nice (void);
 void thread_set_nice (int);

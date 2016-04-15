@@ -1,4 +1,5 @@
 #include "threads/thread.h"
+//#include "threads/fixed_point.h"
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -11,6 +12,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+//#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -49,6 +51,10 @@ struct kernel_thread_frame
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
+/* mlfqs additions */
+static struct fixed_point load_avg;    /* estimate of avg # of threads ready to
+                                 * run over past minute*/
+
 
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
@@ -70,6 +76,8 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static struct list mlfq[PRI_MAX+1];
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -98,6 +106,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  initial_thread->nice = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -134,10 +143,126 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+//  // Update mlfqs statistics / priorities
+//  if (thread_mlfqs != 0) {
+//    // disable interrupts while updating, necessary? may cause performace issues
+//    enum intr_level old_level;
+//    old_level = intr_disable();
+//    int64_t t_ticks = timer_ticks();
+//
+//    // once every second calculate the system load_avg and each threads recent_cpu
+//    if (t_ticks % 100 == 0) {
+//      calc_load_avg();
+//      // should run calc_recent_cput on each thread, not 100% sure if this is right
+//      thread_foreach(calc_recent_cpu, NULL);
+//    }
+//
+//    // every 4 ticks update the priority of all threads.
+//    if (t_ticks % 4 == 0) {
+//      /* update priority of all threads
+//       * may be able to to use the thread_foreach() function again
+//       * need to make sure threads get into the right queues after
+//       * changing their priority */
+//      update_mlfqs_priority();
+//    }
+//
+//    intr_set_level(old_level);
+//
+//    // maybe check if a different thread has higher priority now and yield?
+//    // might already be handled as we calc priority every 4 ticks and threads
+//    // yield after 4 ticks, not positive though.
+//
+//  } // end mlfqs update
+
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 }
+
+/*********** mlfqs specific functions ************/
+
+// Update mlfqs statistics / priorities
+void update_mlfqs(int64_t t_ticks) {
+  // need to find better place for call so checking is done before funciton call
+  if (thread_mlfqs != 0) {
+    // disable interrupts while updating
+    enum intr_level old_level;
+    old_level = intr_disable();
+
+    // once every second calculate the system load_avg and each threads recent_cpu
+    if (t_ticks % 100 == 0) {
+      calc_load_avg();
+      // should run calc_recent_cput on each thread, not 100% sure if this is right
+      thread_foreach(calc_recent_cpu, NULL);
+    }
+
+    // every 4 ticks update the priority of all threads.
+    if (t_ticks % 4 == 0) {
+      /* update priority of all threads
+      * may be able to to use the thread_foreach() function again
+      * need to make sure threads get into the right queues after
+      * changing their priority */
+      update_mlfqs_priority();
+    }
+
+    intr_set_level(old_level);
+
+// maybe check if a different thread has higher priority now and yield?
+// might already be handled as we calc priority every 4 ticks and threads
+// yield after 4 ticks, not positive though.
+  }
+}  // end mlfqs update
+
+
+/* Run through all threads and update priority */
+void update_mlfqs_priority(void){
+
+}
+
+/* calculate and update the recent_cpu variable for parameter thread */
+void calc_recent_cpu(struct thread *t, void *aux){
+
+}
+
+/* calculate the system load avg. estimate of the average # of threads
+ * waiting to run over the past minute. */
+void calc_load_avg(){
+
+}
+
+
+/* Sets the current thread's nice value to NICE. */
+void
+thread_set_nice (int nice UNUSED)
+{
+  /* Not yet implemented. */
+}
+
+/* Returns the current thread's nice value. */
+int
+thread_get_nice (void)
+{
+  /* Not yet implemented. */
+  return 0;
+}
+
+/* Returns 100 times the system load average. */
+int
+thread_get_load_avg (void)
+{
+  /* Not yet implemented. */
+  return 0;
+}
+
+/* Returns 100 times the current thread's recent_cpu value. */
+int
+thread_get_recent_cpu (void)
+{
+  /* Not yet implemented. */
+  return 0;
+}
+
+/***** end mlfqs specific functions *****/
 
 /* Prints thread statistics. */
 void
@@ -200,9 +325,15 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   /* Initialize priority donation */
-  t->init_priority = priority;
-  list_init(&t->donor_list);
+  if (thread_mlfqs == 0){
+  	t->init_priority = priority;
+  	list_init(&t->donor_list);
+  }
 
+  /* Initialize mlfqs variables */
+  if (thread_mlfqs != 0){
+  	
+  }
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -379,36 +510,6 @@ thread_get_priority (void)
   return priority;
 }
 
-/* Sets the current thread's nice value to NICE. */
-void
-thread_set_nice (int nice UNUSED) 
-{
-  /* Not yet implemented. */
-}
-
-/* Returns the current thread's nice value. */
-int
-thread_get_nice (void) 
-{
-  /* Not yet implemented. */
-  return 0;
-}
-
-/* Returns 100 times the system load average. */
-int
-thread_get_load_avg (void) 
-{
-  /* Not yet implemented. */
-  return 0;
-}
-
-/* Returns 100 times the current thread's recent_cpu value. */
-int
-thread_get_recent_cpu (void) 
-{
-  /* Not yet implemented. */
-  return 0;
-}
 
 /* Idle thread.  Executes when no other thread is ready to run.
 
@@ -630,3 +731,4 @@ int should_preempt()
   }
   return 0;
 }
+
