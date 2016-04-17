@@ -101,6 +101,13 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
+  if (thread_mlfqs != 0){
+  	int i;
+  	for (i = 0; i < PRI_MAX;i++){
+  		list_init(&mlfq[i]);
+  	}
+  }
+
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -625,10 +632,23 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
-    return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  	if (thread_mlfqs == 0){
+	  if (list_empty (&ready_list))
+	    return idle_thread;
+	  else
+	    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    }
+    else{
+    	int i = PRI_MAX - 1;
+    	while (i >= 0){
+    		if (!list_empty(&mlfq[i])){
+    			return list_entry (list_pop_front (&mlfq[i]), struct thread, elem);
+    		}
+    		i++;
+    	}    	
+    	/* all queue's must be empty, return idle thread */
+    	return idle_thread;
+    }
 }
 
 /* Completes a thread switch by activating the new thread's page
