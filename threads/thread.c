@@ -113,7 +113,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  initial_thread->nice = 20;
+  initial_thread->nice = 20;  
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -189,7 +189,7 @@ thread_tick (void)
 /*********** mlfqs specific functions ************/
 
 // Update mlfqs statistics / priorities
-void update_mlfqs(int64_t t_ticks) {
+void update_mlfqs(int64_t t_ticks) {	
   // need to find better place for call so checking is done before funciton call
   if (thread_mlfqs != 0) {
     // disable interrupts while updating
@@ -234,7 +234,7 @@ void thread_calculate_priority(struct thread *t){
 }
 
 /* inserts a thread to the proper place in the mlfq. used by unblock/thread_yield*/
-void insert_thread_mlfq(struct thread *t){
+void insert_thread_mlfq(struct thread *t){	
 	enum intr_level old_level;
     old_level = intr_disable();
     int p = t->priority;	
@@ -406,8 +406,7 @@ thread_unblock (struct thread *t)
   	insert_thread_mlfq(t);
   }
 
-  t->status = THREAD_READY;
-
+  t->status = THREAD_READY;  
   intr_set_level (old_level);
 }
 
@@ -489,14 +488,13 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-	  	if (thread_mlfqs == 0){
-	  	list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_sort, NULL);
+	if (thread_mlfqs == 0){
+	  list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_sort, NULL);
 	  }
 	  else{
 	  	insert_thread_mlfq(cur);
-	  }
-  }
-    list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_sort, NULL);
+	}
+  }   
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
