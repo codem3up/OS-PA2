@@ -110,10 +110,10 @@ thread_init (void)
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
+  initial_thread->nice = 20;  
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
-  initial_thread->tid = allocate_tid ();
-  initial_thread->nice = 20;  
+  initial_thread->tid = allocate_tid ();  
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -122,15 +122,18 @@ void
 thread_start (void) 
 {
   /* Create the idle thread. */
+
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
+
   thread_create ("idle", PRI_MIN, idle, &idle_started);
 
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
   /* Wait for the idle thread to initialize idle_thread. */
-  sema_down (&idle_started);
+
+  sema_down (&idle_started);    
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -238,7 +241,8 @@ void insert_thread_mlfq(struct thread *t){
 	enum intr_level old_level;
     old_level = intr_disable();
     int p = t->priority;	
-	list_push_back (&mlfq[p], &t->allelem);
+	list_push_back (&(mlfq[p]), &t->elem);
+	intr_set_level (old_level);	
 }
 
 /* calculate and update the recent_cpu variable for parameter thread */
@@ -263,7 +267,8 @@ thread_set_nice (int nice UNUSED)
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void)
-{  
+{
+
   return thread_current()->nice;
 }
 
@@ -488,7 +493,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-	if (thread_mlfqs == 0){
+	if (thread_mlfqs == 0) {
 	  list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_sort, NULL);
 	  }
 	  else{
@@ -629,8 +634,8 @@ init_thread (struct thread *t, const char *name, int priority)
   if (thread_mlfqs == 0){
   	t->priority = priority;	
   }
-  else {
-  	t->nice = thread_get_nice(); //sets new thread to current threads nice value
+  else if (t->nice != 20){
+  	t->nice = 20;//thread_get_nice(); //sets new thread to current threads nice value
   	t->recent_cpu = converter(0);
   	thread_calculate_priority(t);
   }
@@ -669,14 +674,24 @@ next_thread_to_run (void)
 	  else
 	    return list_entry (list_pop_front (&ready_list), struct thread, elem);
     }
+
     else{
     	int i = PRI_MAX;
     	while (i >= 0){
+
     		if (!list_empty(&mlfq[i])){
-    			return list_entry (list_pop_front (&mlfq[i]), struct thread, elem);
+
+    			struct thread *next = list_entry (list_pop_front (&mlfq[i]), struct thread, elem);
+    			//printf(next->priority);
+    			ASSERT(next != NULL);
+    			ASSERT(is_thread(next));
+    			
+    			//return list_entry (list_pop_front (&mlfq[i]), struct thread, elem);    			
+    			return next;
     		}
-    		i++;
+    		i--;
     	}    	
+
     	/* all queue's must be empty, return idle thread */
     	return idle_thread;
     }
@@ -738,6 +753,7 @@ thread_schedule_tail (struct thread *prev)
 static void
 schedule (void) 
 {
+
   struct thread *cur = running_thread ();
   struct thread *next = next_thread_to_run ();
   struct thread *prev = NULL;
