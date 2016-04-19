@@ -25,6 +25,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+static struct list mlfqs_list[PRI_MAX+1];
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -143,91 +144,62 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-//  // Update mlfqs statistics / priorities
-//  if (thread_mlfqs != 0) {
-//    // disable interrupts while updating, necessary? may cause performace issues
-//    enum intr_level old_level;
-//    old_level = intr_disable();
-//    int64_t t_ticks = timer_ticks();
-//
-//    // once every second calculate the system load_avg and each threads recent_cpu
-//    if (t_ticks % 100 == 0) {
-//      calc_load_avg();
-//      // should run calc_recent_cput on each thread, not 100% sure if this is right
-//      thread_foreach(calc_recent_cpu, NULL);
-//    }
-//
-//    // every 4 ticks update the priority of all threads.
-//    if (t_ticks % 4 == 0) {
-//      /* update priority of all threads
-//       * may be able to to use the thread_foreach() function again
-//       * need to make sure threads get into the right queues after
-//       * changing their priority */
-//      update_mlfqs_priority();
-//    }
-//
-//    intr_set_level(old_level);
-//
-//    // maybe check if a different thread has higher priority now and yield?
-//    // might already be handled as we calc priority every 4 ticks and threads
-//    // yield after 4 ticks, not positive though.
-//
-//  } // end mlfqs update
+  // Update mlfqs statistics / priorities
+  if (thread_mlfqs) {
+    // disable interrupts while updating, necessary? may cause performace issues
+    enum intr_level old_level;
+    old_level = intr_disable();
+    int64_t t_ticks = timer_ticks();
+
+
+    /*********** mlfqs specific functions ************/
+    // once every second calculate the system load_avg and each threads recent_cpu
+    if (t_ticks % 100 == 0) 
+    {
+      calc_load_avg();
+    }
+
+    // every 4 ticks update the priority of all threads.
+    if (t_ticks % 4 == 0) {
+      /* update priority of all threads
+       * may be able to to use the thread_foreach() function again
+       * need to make sure threads get into the right queues after
+       * changing their priority */
+      thread_foreach(calc_recent_cpu, NULL);
+      thread_foreach(calc_priority, NULL);
+    }
+
+    intr_set_level(old_level);
+
+    // maybe check if a different thread has higher priority now and yield?
+    // might already be handled as we calc priority every 4 ticks and threads
+    // yield after 4 ticks, not positive though.
+
+  } // end mlfqs update
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 }
 
-/*********** mlfqs specific functions ************/
-
-// Update mlfqs statistics / priorities
-void update_mlfqs(int64_t t_ticks) {
-  // need to find better place for call so checking is done before funciton call
-  if (thread_mlfqs != 0) {
-    // disable interrupts while updating
-    enum intr_level old_level;
-    old_level = intr_disable();
-
-    // once every second calculate the system load_avg and each threads recent_cpu
-    if (t_ticks % 100 == 0) {
-      calc_load_avg();
-      // should run calc_recent_cput on each thread, not 100% sure if this is right
-      thread_foreach(calc_recent_cpu, NULL);
-    }
-
-    // every 4 ticks update the priority of all threads.
-    if (t_ticks % 4 == 0) {
-      /* update priority of all threads
-      * may be able to to use the thread_foreach() function again
-      * need to make sure threads get into the right queues after
-      * changing their priority */
-      update_mlfqs_priority();
-    }
-
-    intr_set_level(old_level);
-
-// maybe check if a different thread has higher priority now and yield?
-// might already be handled as we calc priority every 4 ticks and threads
-// yield after 4 ticks, not positive though.
-  }
-}  // end mlfqs update
-
 
 /* Run through all threads and update priority */
-void update_mlfqs_priority(void){
-
-}
 
 /* calculate and update the recent_cpu variable for parameter thread */
-void calc_recent_cpu(struct thread *t, void *aux){
+void calc_recent_cpu(struct thread *t, void *aux)
+{
+  t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)), (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu)); 
+}
 
+void calc_priority(struct thread *t, void *aux){
+  t->priority = inverter(subtractionC(subtractionNC(PRI_MAX, divisionCN(t->recent_cpu, 4)), multiplicationN(t->nice, 2))); 
 }
 
 /* calculate the system load avg. estimate of the average # of threads
  * waiting to run over the past minute. */
 void calc_load_avg(){
-
+  int num_running_threads = list_size(&ready_list);
+  load_avg = additionC(multiplicationC(divisionN(59, 60), load_avg), multiplicationCN(divisionN(1,60), num_running_threads)); 
 }
 
 
@@ -235,15 +207,14 @@ void calc_load_avg(){
 void
 thread_set_nice (int nice UNUSED)
 {
-  /* Not yet implemented. */
+  thread_current ()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the system load average. */
@@ -251,14 +222,14 @@ int
 thread_get_load_avg (void)
 {
   /* Not yet implemented. */
-  return 0;
+  return load_avg.value;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  /* Not yet implemented. */
+  //return 100 * t->recent_cpu; 
   return 0;
 }
 
@@ -308,7 +279,6 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -327,6 +297,7 @@ thread_create (const char *name, int priority,
   /* Initialize priority donation */
   if (thread_mlfqs == 0){
   	t->init_priority = priority;
+    t->nice = thread_current ()->nice;
   	list_init(&t->donor_list);
   }
 

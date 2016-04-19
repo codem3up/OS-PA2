@@ -144,8 +144,8 @@ void thread_set_priority (int);
 void update_mlfqs(int64_t ticks);
 void update_mlfqs_priority(void);
 void calc_recent_cpu(struct thread *t, void *aux);
+void calc_priority(struct thread *t, void *aux);
 void calc_load_avg();
-
 
 int thread_get_nice (void);
 void thread_set_nice (int);
