@@ -177,11 +177,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
 
-  // need to disable interupts while looking at timer_ticks?
-  if (ticks % 4 == 0 || ticks % TIMER_FREQ == 0){
-    update_mlfqs(ticks);
-  }
-
   thread_tick (); // think this should go after mlfqs?
   thread_foreach(activate_threads, 0);
 }
