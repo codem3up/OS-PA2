@@ -93,7 +93,7 @@ struct thread
     int64_t sleep_time;                      /* How long thread should sleep */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    struct list_elem donor_list_elem;   
     /* project additions */
     struct list donor_list;          /* list of threads that have donated prioriy */
     int init_priority;                  /* original priority */
@@ -139,6 +139,8 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void donate_priority(struct thread *t);
+void give_up_priority(struct thread *t);
 
 /* mlfqs additions */
 void update_mlfqs(int64_t ticks);
