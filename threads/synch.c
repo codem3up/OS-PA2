@@ -217,11 +217,15 @@ lock_acquire (struct lock *lock)
 //
 //  }
 //  intr_set_level(old_level);
-  if (lock->holder != NULL){  
+  if (lock->holder != NULL && threading_initialized != 0){  
+    
     donate_priority(lock->holder);
+
   }
   sema_down (&lock->semaphore);
-  give_up_priority(lock->holder);
+  if (lock->holder != NULL && threading_initialized != 0){
+   give_up_priority(lock->holder);
+}
   lock->holder = thread_current ();
 
 }
@@ -260,6 +264,7 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
