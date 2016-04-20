@@ -194,18 +194,17 @@ thread_tick (void)
 // Update mlfqs statistics / priorities
 void update_mlfqs(int64_t t_ticks) {	
   // need to find better place for call so checking is done before funciton call
-  if (thread_mlfqs) {
     // disable interrupts while updating
-    enum intr_level old_level;
-    old_level = intr_disable();
-    int64_t t_ticks = timer_ticks();
-
+   
+    //enum intr_level old_level;
+    //old_level = intr_disable();
 
     /*********** mlfqs specific functions ************/
     // once every second calculate the system load_avg and each threads recent_cpu
     if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
+      thread_foreach(calc_recent_cpu, NULL);
     }
 
     // every 4 ticks update the priority of all threads.
@@ -218,13 +217,12 @@ void update_mlfqs(int64_t t_ticks) {
       thread_foreach(calc_priority, NULL);
     }
 
-    intr_set_level(old_level);
+    //intr_set_level(old_level);
 
     // maybe check if a different thread has higher priority now and yield?
     // might already be handled as we calc priority every 4 ticks and threads
     // yield after 4 ticks, not positive though.
 
-  } // end mlfqs update
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -250,6 +248,9 @@ void insert_thread_mlfq(struct thread *t){
 /* calculate and update the recent_cpu variable for parameter thread */
 void calc_recent_cpu(struct thread *t, void *aux)
 {
+  if(t == idle_thread)
+    return;
+
   t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)), (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu)); 
 }
 
@@ -260,8 +261,15 @@ void calc_priority(struct thread *t, void *aux){
 /* calculate the system load avg. estimate of the average # of threads
  * waiting to run over the past minute. */
 void calc_load_avg(){
-  int num_running_threads = list_size(&ready_list);
-  load_avg = additionC(multiplicationC(divisionN(59, 60), load_avg), multiplicationCN(divisionN(1,60), num_running_threads)); 
+  int num_threads;
+  num_threads = list_size(&ready_list);
+
+  if(thread_current () == idle_thread)
+  {
+    num_threads = num_threads + 1;
+  }
+
+  load_avg = additionC(multiplicationC(divisionN(59, 60), load_avg), multiplicationCN(divisionN(1,60), num_threads)); 
 }
 
 
@@ -276,6 +284,11 @@ thread_set_nice (int nice UNUSED)
 int
 thread_get_nice (void)
 {
+  if(thread_current() == idle_thread)
+  {
+    printf("Thread current == idle");
+    return;
+  }
   return thread_current()->nice;
 }
 
