@@ -60,7 +60,15 @@ static converted_int convertFraction(int numerator, int denominator) {
 	converted_int quotient;
 	quotient = converter(numerator); //sending our numerator to be converted
 	//quotient.value = quotient.value / denominator;
-	quotient.value = (quotient.value + (converter(denominator).value/2)) / denominator; //doing converted evaluation
+	int rounder = denominator / 2;
+	if(quotient.value >= 0) {
+		quotient.value = quotient.value + rounder;
+	}
+	else {
+		quotient.value = quotient.value - rounder;
+	}
+	quotient.value = quotient.value / denominator;
+	//quotient.value = (quotient.value + (converter(denominator).value/2)) / denominator; //doing converted evaluation
 	return quotient; // returning converted value
 }
 
