@@ -96,7 +96,6 @@ static struct list mlfq[PRI_MAX+1];
 void
 thread_init (void) 
 {
-  threading_initialized = 0;
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
@@ -115,8 +114,7 @@ thread_init (void)
   initial_thread->nice = 20;  
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
-  initial_thread->tid = allocate_tid ();  
-  threading_initialized = 1;
+  initial_thread->tid = allocate_tid ();
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -531,6 +529,7 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level = intr_disable();
   thread_current ()->priority = new_priority;
+  thread_current ()->init_priority = new_priority;
   if(should_preempt()){
     thread_yield();
   }
@@ -637,6 +636,7 @@ init_thread (struct thread *t, const char *name, int priority)
   if (thread_mlfqs == 0){
   	t->priority = priority;	
   	t->init_priority = priority;
+    list_init(&t->donor_list);
   }
   else if (t->nice != 20){
   	t->nice = 20;//thread_get_nice(); //sets new thread to current threads nice value
@@ -806,7 +806,7 @@ int should_preempt()
 /* current thread donates priority to paramater thread should only be called
     if donee's init_priority is less than donors priority */
 void donate_priority(struct thread *t){
-  ASSERT (t->status == THREAD_READY);
+  //ASSERT (t->status == THREAD_READY);
 
   //disable interrupts
   enum intr_level old_level;
@@ -833,6 +833,21 @@ void donate_priority(struct thread *t){
 
 // resets priority, very simple for now
 void give_up_priority(struct thread *t){
+//
+//  if (!list_empty(&t->donor_list)){
+//      list_pop_front(&t->donor_list);
+//
+//    if (!list_empty(&t->donor_list)){
+//      struct thread *next_donor = list_entry(list_front(&ready_list), struct thread, donor_list_elem);
+//      t->priority = next_donor->priority;
+//    }
+//    else{
+//      t->priority = t->init_priority;
+//    }
+//  }
+//  else {
+//    //ASSERT(t->priority == t->init_priority);
+//  }
   t->priority = t->init_priority;
   list_init(&t->donor_list);
 }
