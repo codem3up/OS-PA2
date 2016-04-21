@@ -124,8 +124,8 @@ sema_up (struct semaphore *sema)
     struct thread, elem));
   }
   sema->value++;
-//
-  give_up_priority(thread_current());
+
+//  give_up_priority(thread_current());
   if(should_preempt())
     thread_yield();
   intr_set_level (old_level);
@@ -231,7 +231,6 @@ lock_acquire (struct lock *lock)
 //  }
 //  intr_set_level(old_level);
   if (lock->holder != NULL){
-
     donate_priority(lock->holder);
   }
   sema_down (&lock->semaphore);
@@ -272,6 +271,7 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
+  give_up_priority(thread_current());
   sema_up (&lock->semaphore);
 }
 

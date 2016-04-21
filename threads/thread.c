@@ -528,8 +528,12 @@ void
 thread_set_priority (int new_priority) 
 {
   enum intr_level old_level = intr_disable();
-  thread_current ()->priority = new_priority;
-  thread_current ()->init_priority = new_priority;
+  struct thread *cur = thread_current();
+  //if (list_empty(&cur->donor_list)) {
+  if (cur->priority == cur->init_priority){
+    cur->priority = new_priority;
+    cur->init_priority = new_priority;
+  }
   if(should_preempt()){
     thread_yield();
   }
@@ -823,11 +827,10 @@ void donate_priority(struct thread *t){
     }
   }
 
-  //insert donor to donor list
-  // if (cur->priority > t->init_priority){
-  //   list_insert_ordered(&t->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
-  // }
-  
+//  insert donor to donor list
+     list_insert_ordered(&t->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
+
+
   intr_set_level (old_level);
 }
 
@@ -848,6 +851,7 @@ void give_up_priority(struct thread *t){
 //  else {
 //    //ASSERT(t->priority == t->init_priority);
 //  }
+
   t->priority = t->init_priority;
   list_init(&t->donor_list);
 }
