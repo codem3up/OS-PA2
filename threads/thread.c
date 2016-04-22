@@ -206,6 +206,9 @@ void calc_priority(struct thread *t, void *aux){
  * waiting to run over the past minute. */
 void calc_load_avg()
 {
+  ASSERT(thread_mlfqs);
+  ASSERT(intr_context());
+  
   int num_threads;
 
   num_threads = list_size(&ready_list);
@@ -336,6 +339,18 @@ thread_block (void)
   schedule ();
 }
 
+/*Used in thread_unblock & thread_yield to insert threads in a sorted way according to priority (Rather than just appending to back)*/
+static bool priority_sort(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  struct thread *first = list_entry(a, struct thread, elem);
+  struct thread *second = list_entry(b, struct thread, elem);
+  if(first->priority > second->priority)
+  {
+    return true;
+  }
+  return false;
+}
+
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -354,23 +369,10 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   
-  list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_sort, NULL);
-  printf("Thread Unblock");
+  list_insert_ordered(&ready_list, &t->elem, priority_sort, NULL);
 
   t->status = THREAD_READY;  
   intr_set_level (old_level);
-}
-
-/*Used in thread_unblock & thread_yield to insert threads in a sorted way according to priority (Rather than just appending to back)*/
-bool priority_sort(const struct list_elem *a, const struct list_elem *b)
-{
-  struct thread *first = list_entry(a, struct thread, elem);
-  struct thread *second = list_entry(b, struct thread, elem);
-  if(first->priority > second->priority)
-  {
-    return true;
-  }
-  return false;
 }
 
 /* Returns the name of the running thread. */
@@ -440,7 +442,7 @@ thread_yield (void)
   old_level = intr_disable ();
 
   if (cur != idle_thread) {
-	  list_insert_ordered(&ready_list, &cur->elem, (list_less_func *) &priority_sort, NULL);
+	  list_insert_ordered(&ready_list, &cur->elem, priority_sort, NULL);
   }   
   cur->status = THREAD_READY;
   schedule ();
