@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/fixed_point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -92,8 +93,12 @@ struct thread
     int64_t sleep_time;                      /* How long thread should sleep */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list_elem donor_list_elem;   
+    /* project additions */
     struct list donor_list;          /* list of threads that have donated prioriy */
     int init_priority;                  /* original priority */
+    struct fixed_point recent_cpu;      /* measure of threads "recent" cpu use */
+    int nice;                           /* measure of how friendly thread is to other threads */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -121,6 +126,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
+
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -134,13 +140,23 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void donate_priority(struct thread *t);
+void give_up_priority(struct thread *t);
+
+/* mlfqs additions */
+void update_mlfqs(int64_t ticks);
+void update_mlfqs_priority(void);
+void calc_recent_cpu(struct thread *t, void *aux);
+void calc_priority(struct thread *t, void *aux);
+void calc_load_avg();
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-bool priority_sort(const struct list_elem *a, const struct list_elem *b);
+static bool priority_sort (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED);
+
 int should_preempt(void);
 
 #endif /* threads/thread.h */
