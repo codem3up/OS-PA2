@@ -147,15 +147,16 @@ void give_up_priority(struct thread *t);
 void update_mlfqs(int64_t ticks);
 void update_mlfqs_priority(void);
 void calc_recent_cpu(struct thread *t, void *aux);
+void calc_priority(struct thread *t, void *aux);
 void calc_load_avg();
-
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-bool priority_sort(const struct list_elem *a, const struct list_elem *b);
+static bool priority_sort (const struct list_elem *lhs, const struct list_elem *rhs, void *aux UNUSED);
+
 int should_preempt(void);
 
 #endif /* threads/thread.h */
