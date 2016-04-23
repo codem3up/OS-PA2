@@ -162,7 +162,8 @@ void update_mlfqs(int64_t t_ticks) {
   if (thread_mlfqs) {
     // disable interrupts while updating
     int64_t t_ticks = timer_ticks();
-
+    
+    thread_current()->recent_cpu = additionNC(1, thread_current()->recent_cpu);
 
     /*********** mlfqs specific functions ************/
     // once every second calculate the system load_avg and each threads recent_cpu
@@ -196,7 +197,9 @@ void thread_calculate_priority(struct thread *t){
 /* calculate and update the recent_cpu variable for parameter thread */
 void calc_recent_cpu(struct thread *t, void *aux)
 {
-  t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)), (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu)); 
+  //t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)), (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu)); 
+  int load = inverter(load_avg) * 2;
+  t->recent_cpu = additionNC(t->nice, multiplicationC(divisionNC(load, additionN(load, 1)), t->recent_cpu));
 }
 
 void calc_priority(struct thread *t, void *aux){
@@ -249,7 +252,7 @@ int
 thread_get_recent_cpu (void)
 {
   //return 100 * t->recent_cpu; 
-  return 0;
+  return(inverter(multiplicationCN(thread_current()->recent_cpu, 1)));
 }
 
 /***** end mlfqs specific functions *****/
