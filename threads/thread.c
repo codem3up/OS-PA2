@@ -154,7 +154,7 @@ thread_tick (void)
 // Update mlfqs statistics / priorities
 void update_mlfqs(int64_t t_ticks) {	
   // need to find better place for call so checking is done before funciton call
-      if (t_ticks % 100 == 0) 
+  if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
     }
@@ -206,19 +206,18 @@ void calc_priority(struct thread *t, void *aux){
  * waiting to run over the past minute. */
 void calc_load_avg()
 {
-  ASSERT(thread_mlfqs);
+  //ASSERT(thread_mlfqs);
   ASSERT(intr_context());
-  
+
   int num_threads;
 
   num_threads = list_size(&ready_list);
 
   if(thread_current () != idle_thread)
   {
-    num_threads = num_threads;
+    num_threads = num_threads+1;
   }
 
-  printf("Num threads %d", num_threads);
   load_avg = additionC(multiplicationC(divisionN(59, 60), load_avg), multiplicationCN(divisionN(1,60), num_threads)); 
 }
 
@@ -241,7 +240,7 @@ int
 thread_get_load_avg (void)
 {
   /* Not yet implemented. */
-  return load_avg.value;
+  return (inverter(multiplicationCN(load_avg,100)));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
