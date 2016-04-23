@@ -65,6 +65,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -104,7 +105,7 @@ thread_init (void)
   initial_thread->nice = 20;  
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
-  initial_thread->tid = allocate_tid ();  
+  initial_thread->tid = allocate_tid ();
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -470,7 +471,12 @@ void
 thread_set_priority (int new_priority) 
 {
   enum intr_level old_level = intr_disable();
-  thread_current ()->priority = new_priority;
+  struct thread *cur = thread_current();
+  //if (list_empty(&cur->donor_list)) {
+  if (cur->priority == cur->init_priority){
+    cur->priority = new_priority;
+    cur->init_priority = new_priority;
+  }
   if(should_preempt()){
     thread_yield();
   }
@@ -576,6 +582,8 @@ init_thread (struct thread *t, const char *name, int priority)
 
   if (thread_mlfqs == 0){
   	t->priority = priority;	
+  	t->init_priority = priority;
+    list_init(&t->donor_list);
   }
   else if (t->nice != 20){
   	t->nice = 20;//thread_get_nice(); //sets new thread to current threads nice value
@@ -719,3 +727,51 @@ int should_preempt()
   return 0;
 }
 
+/* current thread donates priority to paramater thread should only be called
+    if donee's init_priority is less than donors priority */
+void donate_priority(struct thread *t){
+  //ASSERT (t->status == THREAD_READY);
+
+  //disable interrupts
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  struct thread *cur = thread_current();
+  
+  //update priority and remove thread from ready list
+  if (cur->priority > t->priority){
+    t->priority = cur->priority;
+    if (list_size(&ready_list) > 1){
+      list_remove (&t->elem);
+      list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_sort, NULL);
+    }
+  }
+
+//  insert donor to donor list
+     list_insert_ordered(&t->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
+
+
+  intr_set_level (old_level);
+}
+
+// resets priority, very simple for now
+void give_up_priority(struct thread *t){
+//
+//  if (!list_empty(&t->donor_list)){
+//      list_pop_front(&t->donor_list);
+//
+//    if (!list_empty(&t->donor_list)){
+//      struct thread *next_donor = list_entry(list_front(&ready_list), struct thread, donor_list_elem);
+//      t->priority = next_donor->priority;
+//    }
+//    else{
+//      t->priority = t->init_priority;
+//    }
+//  }
+//  else {
+//    //ASSERT(t->priority == t->init_priority);
+//  }
+
+  t->priority = t->init_priority;
+  list_init(&t->donor_list);
+}
