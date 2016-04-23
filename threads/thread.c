@@ -144,7 +144,9 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
-
+//  printf("recent cpu start tick: %d\n",inverter(multiplicationCN(t->recent_cpu,100)));
+  t->recent_cpu = additionNC(1, t->recent_cpu);
+//  printf("recent cpu end tick: %d\n",inverter(multiplicationCN(t->recent_cpu,100)));
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
@@ -158,10 +160,12 @@ void update_mlfqs(int64_t t_ticks) {
   if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
+      thread_foreach(calc_recent_cpu, NULL);
     }
   if (thread_mlfqs) {
     // disable interrupts while updating
     int64_t t_ticks = timer_ticks();
+    
 
 
     /*********** mlfqs specific functions ************/
@@ -172,7 +176,7 @@ void update_mlfqs(int64_t t_ticks) {
        * may be able to to use the thread_foreach() function again
        * need to make sure threads get into the right queues after
        * changing their priority */
-      thread_foreach(calc_recent_cpu, NULL);
+
       thread_foreach(calc_priority, NULL);
     }
 
@@ -187,20 +191,23 @@ void update_mlfqs(int64_t t_ticks) {
     intr_yield_on_return ();
 }
 
-/* calculate and set threads priority based on mlfq variables */
-void thread_calculate_priority(struct thread *t){
-	/***needs to be updated, currently does not include recent_cpu for testing */
-	t->priority = PRI_MAX - 2 * t->nice;
-}
-
 /* calculate and update the recent_cpu variable for parameter thread */
 void calc_recent_cpu(struct thread *t, void *aux)
 {
-  t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)), (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu)); 
+//  printf("recent cpu1st: %d\n",inverter(multiplicationCN(t->recent_cpu,100)));
+  t->recent_cpu = additionNC(t->nice, multiplicationC(divisionC((multiplicationNC(2, load_avg)),
+                             (additionNC(1, multiplicationNC(2, load_avg)))), t->recent_cpu));
+//  printf("recent cpu: %d\n",inverter(multiplicationCN(t->recent_cpu,100)));
+  //int load = inverter(load_avg) * 2;
+  //t->recent_cpu = additionNC(t->nice, multiplicationC(divisionNC(load, additionN(load, 1)), t->recent_cpu));
 }
 
 void calc_priority(struct thread *t, void *aux){
-  t->priority = inverter(subtractionC(subtractionNC(PRI_MAX, divisionCN(t->recent_cpu, 4)), multiplicationN(t->nice, 2))); 
+  t->priority = inverter(subtractionCN(subtractionNC(PRI_MAX, divisionCN(t->recent_cpu, 4)), (t->nice * 2)));
+  if (t->priority > 63){
+    t->priority = 63;
+  }
+
 }
 
 /* calculate the system load avg. estimate of the average # of threads
@@ -224,9 +231,9 @@ void calc_load_avg()
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED)
+thread_set_nice (int new_nice)
 {
-  thread_current ()->nice = nice;
+  thread_current ()->nice = new_nice;
 }
 
 /* Returns the current thread's nice value. */
@@ -240,7 +247,6 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
-  /* Not yet implemented. */
   return (inverter(multiplicationCN(load_avg,100)));
 }
 
@@ -249,7 +255,7 @@ int
 thread_get_recent_cpu (void)
 {
   //return 100 * t->recent_cpu; 
-  return 0;
+  return(inverter(multiplicationCN(thread_current()->recent_cpu, 1)));
 }
 
 /***** end mlfqs specific functions *****/
@@ -312,6 +318,14 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  /*mlfqs stuff */
+  if (thread_mlfqs){
+    t->nice = thread_get_nice(); //sets new thread to current threads nice value
+    t->recent_cpu = thread_current()->recent_cpu;
+    calc_priority(t, NULL);
+  }
+
 
   thread_unblock (t);
 
@@ -584,11 +598,6 @@ init_thread (struct thread *t, const char *name, int priority)
   	t->priority = priority;	
   	t->init_priority = priority;
     list_init(&t->donor_list);
-  }
-  else if (t->nice != 20){
-  	t->nice = 20;//thread_get_nice(); //sets new thread to current threads nice value
-  	t->recent_cpu = converter(0);
-  	thread_calculate_priority(t);
   }
   
   t->magic = THREAD_MAGIC;
