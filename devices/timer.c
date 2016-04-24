@@ -181,9 +181,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if (ticks % 4 == 0 || ticks % TIMER_FREQ == 0){
     update_mlfqs(ticks);
   }
-
-  thread_tick (); // think this should go after mlfqs?
   thread_foreach(activate_threads, 0);
+  thread_tick (); // think this should go after mlfqs?
+
 }
 
 static void

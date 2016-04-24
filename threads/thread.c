@@ -162,7 +162,7 @@ void update_mlfqs(int64_t t_ticks) {
   if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
-
+      thread_foreach(calc_recent_cpu, NULL);
     }
   if (thread_mlfqs) {
     // disable interrupts while updating
@@ -178,7 +178,7 @@ void update_mlfqs(int64_t t_ticks) {
        * may be able to to use the thread_foreach() function again
        * need to make sure threads get into the right queues after
        * changing their priority */
-      thread_foreach(calc_recent_cpu, NULL);
+
       thread_foreach(calc_priority, NULL);
     }
 
@@ -189,8 +189,8 @@ void update_mlfqs(int64_t t_ticks) {
   } // end mlfqs update
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
+//  if (++thread_ticks >= TIME_SLICE)
+//    intr_yield_on_return ();
 }
 
 /* calculate and update the recent_cpu variable for parameter thread */
