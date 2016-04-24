@@ -10,7 +10,7 @@
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
-#include "threads/synch.h"
+
 #include "threads/vaddr.h"
 //#include "devices/timer.h"
 #ifdef USERPROG
@@ -123,6 +123,7 @@ thread_start (void)
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
+  load_avg = converter(-1);
   /* Wait for the idle thread to initialize idle_thread. */
 
   sema_down (&idle_started);    
@@ -157,6 +158,7 @@ thread_tick (void)
 // Update mlfqs statistics / priorities
 void update_mlfqs(int64_t t_ticks) {	
   // need to find better place for call so checking is done before funciton call
+  t_ticks = timer_ticks();
   if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
@@ -164,7 +166,7 @@ void update_mlfqs(int64_t t_ticks) {
     }
   if (thread_mlfqs) {
     // disable interrupts while updating
-    int64_t t_ticks = timer_ticks();
+
     
 
 
@@ -247,6 +249,9 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
+
+  //return inverter(subtractionCN(multiplicationCN(load_avg,100), 300));
+
   return (inverter(multiplicationCN(load_avg,100)));
 }
 
@@ -738,7 +743,7 @@ int should_preempt()
 
 /* current thread donates priority to paramater thread should only be called
     if donee's init_priority is less than donors priority */
-void donate_priority(struct thread *t){
+void donate_priority(struct thread *t, struct lock *lock){
   //ASSERT (t->status == THREAD_READY);
 
   //disable interrupts
@@ -757,8 +762,7 @@ void donate_priority(struct thread *t){
   }
 
 //  insert donor to donor list
-     list_insert_ordered(&t->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
-
+     list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
 
   intr_set_level (old_level);
 }

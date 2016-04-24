@@ -239,7 +239,7 @@ lock_acquire (struct lock *lock)
 //  }
 //  intr_set_level(old_level);
   if (lock->holder != NULL){
-    donate_priority(lock->holder);
+    donate_priority(lock->holder, lock);
   }
   sema_down (&lock->semaphore);
 
