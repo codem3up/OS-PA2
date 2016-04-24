@@ -209,6 +209,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  list_init(&lock->donor_list);
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -239,7 +240,8 @@ lock_acquire (struct lock *lock)
 //  }
 //  intr_set_level(old_level);
   if (lock->holder != NULL){
-    donate_priority(lock->holder, lock);
+
+    donate_priority(lock->holder, lock, thread_current());
   }
   sema_down (&lock->semaphore);
 

@@ -603,6 +603,7 @@ init_thread (struct thread *t, const char *name, int priority)
   	t->priority = priority;	
   	t->init_priority = priority;
     list_init(&t->donor_list);
+    t->need_lock = NULL;
   }
   
   t->magic = THREAD_MAGIC;
@@ -743,26 +744,34 @@ int should_preempt()
 
 /* current thread donates priority to paramater thread should only be called
     if donee's init_priority is less than donors priority */
-void donate_priority(struct thread *t, struct lock *lock){
+void donate_priority(struct thread *holder, struct lock *lock, struct thread *seeker){
   //ASSERT (t->status == THREAD_READY);
-
+  ASSERT(0==1);
   //disable interrupts
   enum intr_level old_level;
   old_level = intr_disable ();
 
   struct thread *cur = thread_current();
-  
+  cur->need_lock = lock;
+
   //update priority and remove thread from ready list
-  if (cur->priority > t->priority){
-    t->priority = cur->priority;
+  if (cur->priority > holder->priority){
+    holder->priority = cur->priority;
     if (list_size(&ready_list) > 1){
-      list_remove (&t->elem);
-      list_insert_ordered(&ready_list, &t->elem, (list_less_func *) &priority_sort, NULL);
+      list_remove (&holder->elem);
+      list_insert_ordered(&ready_list, &holder->elem, (list_less_func *) &priority_sort, NULL);
     }
   }
 
 //  insert donor to donor list
-     list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func *) &priority_sort, NULL);
+  if (holder->need_lock == NULL) {
+//    list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func * )
+//                                                                  & priority_sort, NULL);
+  }
+  else {
+    //ASSERT(0==1);
+    //donate_priority(holder->need_lock->holder, holder->need_lock, NULL);
+  }
 
   intr_set_level (old_level);
 }
