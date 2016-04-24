@@ -123,7 +123,7 @@ thread_start (void)
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
-  load_avg = converter(-1);
+  //load_avg = converter(-1);
   /* Wait for the idle thread to initialize idle_thread. */
 
   sema_down (&idle_started);    
@@ -162,7 +162,7 @@ void update_mlfqs(int64_t t_ticks) {
   if (t_ticks % 100 == 0) 
     {
       calc_load_avg();
-      thread_foreach(calc_recent_cpu, NULL);
+
     }
   if (thread_mlfqs) {
     // disable interrupts while updating
@@ -178,7 +178,7 @@ void update_mlfqs(int64_t t_ticks) {
        * may be able to to use the thread_foreach() function again
        * need to make sure threads get into the right queues after
        * changing their priority */
-
+      thread_foreach(calc_recent_cpu, NULL);
       thread_foreach(calc_priority, NULL);
     }
 
@@ -746,7 +746,7 @@ int should_preempt()
     if donee's init_priority is less than donors priority */
 void donate_priority(struct thread *holder, struct lock *lock, struct thread *seeker){
   //ASSERT (t->status == THREAD_READY);
-  ASSERT(0==1);
+
   //disable interrupts
   enum intr_level old_level;
   old_level = intr_disable ();
@@ -765,12 +765,12 @@ void donate_priority(struct thread *holder, struct lock *lock, struct thread *se
 
 //  insert donor to donor list
   if (holder->need_lock == NULL) {
-//    list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func * )
-//                                                                  & priority_sort, NULL);
+    list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func * )
+                                                                  & priority_sort, NULL);
   }
   else {
     //ASSERT(0==1);
-    //donate_priority(holder->need_lock->holder, holder->need_lock, NULL);
+    donate_priority(holder->need_lock->holder, holder->need_lock, NULL);
   }
 
   intr_set_level (old_level);
