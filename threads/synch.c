@@ -186,6 +186,7 @@ sema_test_helper (void *sema_)
       sema_up (&sema[1]);
     }
 }
+
 
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
@@ -210,6 +211,9 @@ lock_init (struct lock *lock)
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
   list_init(&lock->donor_list);
+  lock->high_donation = -1;
+  lock->lock_n = lock_number;
+  lock_number++;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -232,13 +236,16 @@ lock_acquire (struct lock *lock)
    * the lock holders priority doesn't change. it's not crashing though either way, hurray.
    * */
 
-  if (lock->holder != NULL){
-//    donate_priority(lock->holder);
-    donate_priority(lock->holder, lock, thread_current());
+  if (lock->holder != NULL && !thread_mlfqs){
+    donate_priority(lock, thread_current());
   }
   sema_down (&lock->semaphore);
 
-  lock->holder = thread_current ();
+  if (!thread_mlfqs) {
+    list_push_back(&thread_current()->held_locks, &lock->lock_elem);
+    thread_current()->need_lock = NULL;
+  }
+  lock->holder = thread_current();
 }
 
 
@@ -274,7 +281,12 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
-  give_up_priority(thread_current());
+  if (!thread_mlfqs) {
+    list_remove(&lock->lock_elem);
+  }
+  if (!list_empty(&lock->donor_list)) {
+    release_donation(thread_current(), lock);
+  }
   sema_up (&lock->semaphore);
 }
 

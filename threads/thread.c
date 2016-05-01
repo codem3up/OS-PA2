@@ -472,7 +472,7 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level = intr_disable();
   struct thread *cur = thread_current();
-  //if (list_empty(&cur->donor_list)) {
+
   if (cur->priority == cur->init_priority){
     cur->priority = new_priority;
     cur->init_priority = new_priority;
@@ -583,7 +583,7 @@ init_thread (struct thread *t, const char *name, int priority)
   if (thread_mlfqs == 0){
   	t->priority = priority;	
   	t->init_priority = priority;
-    list_init(&t->donor_list);
+    list_init(&t->held_locks);
     t->need_lock = NULL;
   }
   else if (t->nice != 20){
@@ -719,6 +719,7 @@ int should_preempt()
 {
   if(!list_empty(&ready_list))
   {
+
     struct thread *top = list_entry(list_front(&ready_list), struct thread, elem);
     if(thread_get_priority() < top->priority)
     {
@@ -728,59 +729,57 @@ int should_preempt()
   return 0;
 }
 
-
 /* current thread donates priority to paramater thread should only be called
     if donee's init_priority is less than donors priority */
-void donate_priority(struct thread *holder, struct lock *lock, struct thread *seeker){
-  //ASSERT (t->status == THREAD_READY);
+void donate_priority(struct lock *lock, struct thread *cur) {
 
-  //disable interrupts
-  enum intr_level old_level;
-  old_level = intr_disable ();
-
-  struct thread *cur = thread_current();
   cur->need_lock = lock;
+  list_insert_ordered(&lock->donor_list, &cur->donor_list_elem,
+                      (list_less_func * ) & priority_sort, NULL);
 
-  //update priority and remove thread from ready list
-  if (cur->priority > holder->priority){
-    holder->priority = cur->priority;
-    if (list_size(&ready_list) > 1){
-      list_remove (&holder->elem);
-      list_insert_ordered(&ready_list, &holder->elem, (list_less_func *) &priority_sort, NULL);
-    }
-  }
+  if (cur->priority > lock->high_donation) {
+    lock->high_donation = cur->priority;
 
-//  insert donor to donor list
-  if (holder->need_lock == NULL) {
-    list_insert_ordered(&lock->donor_list, &cur->donor_list_elem, (list_less_func * )
-                                                                  & priority_sort, NULL);
   }
-  else {
-    //ASSERT(0==1);
-    donate_priority(holder->need_lock->holder, holder->need_lock, NULL);
-  }
-
-  intr_set_level (old_level);
+  update_priority(lock->holder);
 }
 
-// resets priority, very simple for now
-void give_up_priority(struct thread *t){
-//
-//  if (!list_empty(&t->donor_list)){
-//      list_pop_front(&t->donor_list);
-//
-//    if (!list_empty(&t->donor_list)){
-//      struct thread *next_donor = list_entry(list_front(&ready_list), struct thread, donor_list_elem);
-//      t->priority = next_donor->priority;
-//    }
-//    else{
-//      t->priority = t->init_priority;
-//    }
-//  }
-//  else {
-//    //ASSERT(t->priority == t->init_priority);
-//  }
+/* used to find the highest priority lock with list_max*/
+static bool lock_max(const struct list_elem *a, const struct list_elem *b, void *aux)
+{
+  struct lock *first = list_entry(a, struct lock, lock_elem);
+  struct lock *second = list_entry(b, struct lock, lock_elem);
+  if(first->high_donation > second->high_donation)
+  {
+    return true;
+  }
+  return false;
+}
 
-  t->priority = t->init_priority;
-  list_init(&t->donor_list);
+void update_priority(struct thread *t){
+
+  if (list_empty(&t->held_locks)){
+    t->priority = t->init_priority;
+    return;
+  }
+
+  struct lock *max_lock = list_max(&t->held_locks, &lock_max, NULL);
+
+  if (max_lock->high_donation > t->init_priority){
+    t->priority = max_lock->high_donation;
+  }
+
+  if (t->need_lock == NULL){
+      return;
+  }
+  else {
+    update_priority(t->need_lock->holder);
+  }
+}
+
+void release_donation(struct thread *t, struct lock *lock){
+
+  //list_remove(&t->donor_list_elem);
+
+  update_priority(t);
 }

@@ -97,7 +97,7 @@ struct thread
     struct list_elem donor_list_elem;   
     /* project additions */
     struct lock *need_lock;             /* lock this thread is trying to aqcuire */
-    struct list donor_list;          /* list of threads that have donated prioriy */
+    struct list held_locks;          /* list of threads that have donated prioriy */
     int init_priority;                  /* original priority */
     struct fixed_point recent_cpu;      /* measure of threads "recent" cpu use */
     int nice;                           /* measure of how friendly thread is to other threads */
@@ -142,8 +142,8 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
-void donate_priority(struct thread *t, struct lock *lock, struct thread *seeker);
-void give_up_priority(struct thread *t);
+void donate_priority(struct lock *lock, struct thread *seeker);
+void release_donation(struct thread *t, struct lock *lock);
 
 /* mlfqs additions */
 void update_mlfqs(int64_t ticks);
