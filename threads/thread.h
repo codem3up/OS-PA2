@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/fixed_point.h"
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -95,6 +96,7 @@ struct thread
     struct list_elem elem;              /* List element. */
     struct list_elem donor_list_elem;   
     /* project additions */
+    struct lock *need_lock;             /* lock this thread is trying to aqcuire */
     struct list donor_list;          /* list of threads that have donated prioriy */
     int init_priority;                  /* original priority */
     struct fixed_point recent_cpu;      /* measure of threads "recent" cpu use */
@@ -140,7 +142,7 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
-void donate_priority(struct thread *t);
+void donate_priority(struct thread *t, struct lock *lock, struct thread *seeker);
 void give_up_priority(struct thread *t);
 
 /* mlfqs additions */

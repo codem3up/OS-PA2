@@ -209,6 +209,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  list_init(&lock->donor_list);
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -230,16 +231,10 @@ lock_acquire (struct lock *lock)
    * but the other threads never run. when its commented out the other threads run
    * the lock holders priority doesn't change. it's not crashing though either way, hurray.
    * */
-//  enum intr_level old_level = intr_disable();
-//  struct thread *holder = lock->holder;
-//  struct thread *cur = thread_current();
 
-//    lock->holder->priority = thread_current()->priority+1;
-//
-//  }
-//  intr_set_level(old_level);
   if (lock->holder != NULL){
-    donate_priority(lock->holder);
+//    donate_priority(lock->holder);
+    donate_priority(lock->holder, lock, thread_current());
   }
   sema_down (&lock->semaphore);
 
