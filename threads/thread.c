@@ -766,7 +766,11 @@ void update_priority(struct thread *t){
   struct lock *max_lock = list_max(&t->held_locks, &lock_max, NULL);
 
   if (max_lock->high_donation > t->init_priority){
-    t->priority = max_lock->high_donation;
+    if (t->priority != max_lock->high_donation){
+      t->priority = max_lock->high_donation;
+//      list_remove(&t->elem);
+//      list_insert_ordered(&ready_list, &t->elem, priority_sort, NULL);
+    }
   }
 
   if (t->need_lock == NULL){
@@ -777,9 +781,8 @@ void update_priority(struct thread *t){
   }
 }
 
-void release_donation(struct thread *t, struct lock *lock){
-
-  //list_remove(&t->donor_list_elem);
-
-  update_priority(t);
+void reclaim_donation(struct thread *t, struct lock *lock){
+//  if (is_interior(&lock->lock_elem)) {
+//    list_remove(&lock->lock_elem);
+//  }
 }

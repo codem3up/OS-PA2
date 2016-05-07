@@ -231,21 +231,25 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  /** when this section is un commented the lock holders priority changes properly
-   * but the other threads never run. when its commented out the other threads run
-   * the lock holders priority doesn't change. it's not crashing though either way, hurray.
-   * */
-
+  /* if a thread holding the lock donate priority */
   if (lock->holder != NULL && !thread_mlfqs){
     donate_priority(lock, thread_current());
   }
   sema_down (&lock->semaphore);
 
-  if (!thread_mlfqs) {
-    list_push_back(&thread_current()->held_locks, &lock->lock_elem);
-    thread_current()->need_lock = NULL;
+  if (thread_mlfqs){
+    ASSERT(0==1);
   }
-  lock->holder = thread_current();
+
+  struct thread *cur = thread_current();
+
+  /* add lock to held locks list and reclaims any donation */
+  if (!thread_mlfqs) {
+    list_push_back(&cur->held_locks, &lock->lock_elem);
+    cur->need_lock = NULL;
+    reclaim_donation(cur, lock);
+  }
+  lock->holder = cur;
 }
 
 
@@ -282,11 +286,12 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   if (!thread_mlfqs) {
+    /* remove lock from thread's held locks list */
     list_remove(&lock->lock_elem);
+//    /* update threa'ds priority after releasing lock incase of any donations */
+    update_priority(thread_current());
   }
-  if (!list_empty(&lock->donor_list)) {
-    release_donation(thread_current(), lock);
-  }
+
   sema_up (&lock->semaphore);
 }
 

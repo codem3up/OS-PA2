@@ -143,7 +143,7 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 void donate_priority(struct lock *lock, struct thread *seeker);
-void release_donation(struct thread *t, struct lock *lock);
+void reclaim_donation(struct thread *t, struct lock *lock);
 
 /* mlfqs additions */
 void update_mlfqs(int64_t ticks);
